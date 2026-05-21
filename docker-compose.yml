@@ -2,6 +2,25 @@ services:
 
   # Infrastructure
 
+  
+  jenkins:
+    image: jenkins/jenkins:lts
+
+    container_name: jenkins
+
+    privileged: true
+
+    user: root
+
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
@@ -83,3 +102,4 @@ services:
 
 volumes:
   minio_data:
+  jenkins_home:
