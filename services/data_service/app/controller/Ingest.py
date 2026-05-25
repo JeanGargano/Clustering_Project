@@ -6,7 +6,7 @@ import pandas as pd
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from app.service.pipeline import run_pipeline
-from app.service.kafka_producer import publish_dataset_ready
+from app.infra.kafka.producer import publish_dataset_ready
 from app.infra.minio.minio_client import upload_dataframe
 from app.infra.redis.redis_client import get_client
 

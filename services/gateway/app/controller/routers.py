@@ -10,12 +10,14 @@ from app.model.schemas import (
     AnalysisResponse,
     RunClusteringResponse,
 )
-from services.gateway.app.infra.redis.redis_client import get_client
+from app.infra.redis.redis_client import get_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 DATA_SERVICE_URL       = os.getenv("DATA_SERVICE_URL", "http://data_service:8002")
+
+
 
 # ── 1. Ingesta ────────────────────────────────────────────────────────────────
 @router.post("/api/ingest", response_model=DocumentUploadResponse)
@@ -37,10 +39,11 @@ async def ingest_dataset(file: UploadFile = File(...)) -> DocumentUploadResponse
         return DocumentUploadResponse(**data)
 
     except httpx.HTTPStatusError as e:
-        logger.error(f"Error en data_service: {e.response.text}")
-        raise HTTPException(status_code=502, detail="Error al procesar el dataset.")
-    except httpx.RequestError:
-        raise HTTPException(status_code=503, detail="data_service no disponible.")
+        logger.error(f"HTTPStatusError: {e.response.status_code}")
+        logger.error(f"Response: {e.response.text}")
+    except httpx.RequestError as e:
+        logger.error(f"RequestError: {repr(e)}")
+        raise HTTPException(status_code=503, detail=str(e))
 
 
 # ── 2. Polling ────────────────────────────────────────────────────────────────
@@ -57,25 +60,44 @@ async def get_job_status(job_id: str) -> JobStatusResponse:
     return JobStatusResponse(**data)
 
 
-# ── 3. Análisis ───────────────────────────────────────────────────────────────
-@router.get("/api/jobs/{job_id}/analysis", response_model=AnalysisResponse)
+# 3. Análisis 
+@router.get(
+    "/api/jobs/{job_id}/analysis",
+    response_model=AnalysisResponse
+)
 async def get_analysis(job_id: str) -> AnalysisResponse:
 
     redis = get_client()
-    raw   = redis.get(f"job:{job_id}")
+
+    raw = redis.get(f"job:{job_id}")
+
     if not raw:
-        raise HTTPException(status_code=404, detail="Job no encontrado.")
-
+        raise HTTPException(
+            status_code=404,
+            detail="Job no encontrado."
+        )
     state = json.loads(raw)
+    gmm_run = state.get("runs", {}).get("gmm")
 
-    if state.get("status") != "done":
-        raise HTTPException(status_code=400, detail="El clustering aún no ha terminado.")
+    if not gmm_run:
+        raise HTTPException(
+            status_code=404,
+            detail="Run GMM no encontrado."
+        )
+    analysis = gmm_run.get("analysis")
 
-    if not state.get("analysis"):
-        raise HTTPException(status_code=202, detail="Análisis aún no disponible.")
+    if not analysis:
+        raise HTTPException(
+            status_code=202,
+            detail="Análisis aún no disponible."
+        )
 
     return AnalysisResponse(
         job_id=job_id,
-        status=state.get("analysis_status"),
-        analysis=state.get("analysis"),
+        model_type="gmm",
+        status=gmm_run.get(
+            "analysis_status",
+            "done"
+        ),
+        analysis=analysis,
     )
