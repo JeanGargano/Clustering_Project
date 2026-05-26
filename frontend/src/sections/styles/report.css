@@ -7,6 +7,9 @@
   background-color: var(--bg-surface);
   border-radius: 8px;
   overflow: hidden;
+  border-color: var(--bg-surface);
+  border-style: dotted;
+
 }
 
 .report-header {

@@ -102,5 +102,16 @@ services:
       - .env
     restart: on-failure    
 
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    env_file:
+      - .env
+    restart: on-failure
+
 volumes:
   minio_data:          

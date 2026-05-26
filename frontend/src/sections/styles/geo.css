@@ -7,6 +7,7 @@
   overflow: hidden; /* Evita que el mapa cuadrado se salga de las esquinas redondeadas */
   position: relative;
   z-index: 1; /* Mantiene el mapa detrás del Navbar si haces scroll */
+  padding: 0 1rem;
 }
 
 /* Forzamos al mapa de Leaflet a llenar su contenedor */
@@ -14,6 +15,8 @@
   width: 100%;
   height: 100%;
   background-color: #0f172a; /* Mismo color del océano para que no haya destellos blancos al cargar */
+ 
+  border: 5px solid var(--bg-surface);
 }
 
 /* Estado cuando no hay datos */

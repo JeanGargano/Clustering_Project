@@ -22,8 +22,8 @@ const Report = ({ markdownContent }) => {
   return (
     <div className="report-container">
       <div className="report-header">
-        <h3>Análisis Contextual de Amenazas</h3>
-        <span className="badge">Llama 3.3 Generado</span>
+        <h3 className='title1'>Análisis Contextual de Amenazas</h3>
+        <span className="badge text3">Llama 3.3 Generado</span>
       </div>
       
       {/* Contenedor con scroll para textos largos */}
@@ -37,9 +37,10 @@ const Report = ({ markdownContent }) => {
             rehypePlugins={[rehypeKatex]}
             // (Ya no usamos className aquí adentro)
             components={{
-              h1: ({node, ...props}) => <h1 className="md-title" {...props} />,
-              h2: ({node, ...props}) => <h2 className="md-subtitle" {...props} />,
-              a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" {...props} /> 
+              h1: ({node, ...props}) => <h1 className="text1" {...props} />,
+              h2: ({node, ...props}) => <h2 className="text2" {...props} />,
+              a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" className="text2" {...props} />, 
+              p: ({node, ...props}) => <p className="text3" {...props} />
             }}
           >
             {markdownContent}
