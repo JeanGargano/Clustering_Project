@@ -1,0 +1,67 @@
+/* Contenedor padre que ocupará el espacio que le dé el Grid del Dashboard */
+.geo-container {
+  width: 100%;
+  height: 100%;
+  min-height: 500px; /* Un tamaño mínimo de seguridad */
+  border-radius: 8px;
+  overflow: hidden; /* Evita que el mapa cuadrado se salga de las esquinas redondeadas */
+  position: relative;
+  z-index: 1; /* Mantiene el mapa detrás del Navbar si haces scroll */
+}
+
+/* Forzamos al mapa de Leaflet a llenar su contenedor */
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+  background-color: #0f172a; /* Mismo color del océano para que no haya destellos blancos al cargar */
+}
+
+/* Estado cuando no hay datos */
+.geo-empty-state {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-surface);
+  border-radius: 8px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-color);
+  font-family: monospace; /* Le da un toque técnico de terminal */
+}
+
+/* Estilización del Tooltip (hover de los puntos) */
+.leaflet-tooltip.custom-tooltip {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: 6px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+  font-family: inherit; /* Hereda la tipografía de tu proyecto */
+}
+
+/* La flechita del tooltip (ajustando para modo oscuro) */
+.leaflet-tooltip-top.custom-tooltip::before,
+.leaflet-tooltip-bottom.custom-tooltip::before,
+.leaflet-tooltip-left.custom-tooltip::before,
+.leaflet-tooltip-right.custom-tooltip::before {
+  border-color: transparent;
+}
+.geo-container {
+  width: 100%;
+  /* Le damos un alto mínimo de 500px para que no colapse */
+  min-height: 500px; 
+  height: 100%; 
+  position: relative;
+}
+
+.leaflet-map {
+  width: 100%;
+  /* Importante: El mapa debe heredar ese alto mínimo */
+  height: 500px; 
+  min-height: 500px;
+  background-color: #0f172a; 
+  border-radius: 8px;
+}

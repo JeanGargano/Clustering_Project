@@ -12,10 +12,10 @@ const FileUpload = ({ onAnalysisComplete }) => {
   const [statusText, setStatusText] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
   
-  // NUEVO: Estado para almacenar el ID del trabajo actual
+  // Estado para almacenar el ID del trabajo actual
   const [jobId, setJobId] = useState(null);
 
-  // NUEVO: Efecto para recuperar un proceso si el usuario recarga la página
+  // Efecto para recuperar un proceso si el usuario recarga la página
   useEffect(() => {
     const savedJobId = sessionStorage.getItem('active_clustering_job');
     if (savedJobId) {
@@ -78,7 +78,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
       const data = await response.json();
       console.log('Ingesta exitosa. Job ID:', data.job_id);
       
-      // NUEVO: Guardar el ID en el estado y en la sesión
+      // Guardar el ID en el estado y en la sesión
       setJobId(data.job_id);
       sessionStorage.setItem('active_clustering_job', data.job_id);
       
@@ -145,12 +145,17 @@ const FileUpload = ({ onAnalysisComplete }) => {
 
       const data = await response.json();
       
+      // ==========================================
+      // NUEVO: GUARDADO EN ALMACENAMIENTO PERSISTENTE
+      // ==========================================
+      localStorage.setItem('clustering_result', JSON.stringify(data));
+      
       setStatusText('¡Análisis completado exitosamente!');
       setIsProcessing(false);
       
-      console.log("Debug [Exito]: Reporte final obtenido.");
+      console.log("Debug [Exito]: Reporte final obtenido y guardado en localStorage.");
       
-      // NUEVO: Limpieza tras éxito
+      // Limpieza tras éxito
       sessionStorage.removeItem('active_clustering_job');
       setJobId(null);
       
@@ -212,7 +217,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
         {isProcessing && (
           <div className="status-wrapper">
             <p className="text2">{statusText}</p>
-            {/* NUEVO: Mostramos el ID del proceso de forma sutil */}
+            {/* Mostramos el ID del proceso de forma sutil */}
             {jobId && <p className="text3" style={{ marginTop: '0.25rem', opacity: 0.7 }}>ID de proceso: {jobId.substring(0, 8)}</p>}
           </div>
         )}
