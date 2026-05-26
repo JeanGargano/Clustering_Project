@@ -49,7 +49,7 @@ def compute_metrics(
 
     metrics = {}
 
-    # ── Silhouette ────────────────────────────────
+    # ── Silhouette
     if len(set(labels)) > 1:
 
         sample_size = min(5000, len(X))

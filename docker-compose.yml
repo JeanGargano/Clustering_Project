@@ -100,7 +100,11 @@ services:
       - redis              
     env_file:
       - .env
-    restart: on-failure    
+    restart: on-failure   
+
+
+
+
 
 volumes:
   minio_data:          

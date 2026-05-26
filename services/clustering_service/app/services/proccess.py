@@ -44,6 +44,7 @@ async def process(event: dict):
             result["df_with_labels"],
             job_id
         )
+        #logger.info(result_path)
 
         # Recuperar estado actualizado
         raw = redis.get(f"job:{job_id}")

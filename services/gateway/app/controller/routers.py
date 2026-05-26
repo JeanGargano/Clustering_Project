@@ -3,6 +3,7 @@ import logging
 import os
 import httpx
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from app.infra.minio.minio_client import generate_presigned_url
 
 from app.model.schemas import (
     DocumentUploadResponse,
@@ -60,44 +61,35 @@ async def get_job_status(job_id: str) -> JobStatusResponse:
     return JobStatusResponse(**data)
 
 
-# 3. Análisis 
-@router.get(
-    "/api/jobs/{job_id}/analysis",
-    response_model=AnalysisResponse
-)
-async def get_analysis(job_id: str) -> AnalysisResponse:
+
+# ── 3. Resultados del clustering ──────────────────────────────────────────────
+@router.get("/api/jobs/{job_id}/results")
+async def get_results(job_id: str):
 
     redis = get_client()
-
-    raw = redis.get(f"job:{job_id}")
-
+    raw   = redis.get(f"job:{job_id}")
     if not raw:
-        raise HTTPException(
-            status_code=404,
-            detail="Job no encontrado."
-        )
-    state = json.loads(raw)
+        raise HTTPException(status_code=404, detail="Job no encontrado.")
+
+    state   = json.loads(raw)
     gmm_run = state.get("runs", {}).get("gmm")
 
     if not gmm_run:
-        raise HTTPException(
-            status_code=404,
-            detail="Run GMM no encontrado."
-        )
-    analysis = gmm_run.get("analysis")
+        raise HTTPException(status_code=404, detail="Run GMM no encontrado.")
 
-    if not analysis:
-        raise HTTPException(
-            status_code=202,
-            detail="Análisis aún no disponible."
-        )
+    if gmm_run.get("status") != "done":
+        raise HTTPException(status_code=400, detail="El clustering aún no ha terminado.")
 
-    return AnalysisResponse(
-        job_id=job_id,
-        model_type="gmm",
-        status=gmm_run.get(
-            "analysis_status",
-            "done"
-        ),
-        analysis=analysis,
-    )
+    result_path = gmm_run.get("result_path")
+    if not result_path:
+        raise HTTPException(status_code=404, detail="Ruta de resultados no encontrada.")
+
+    url = generate_presigned_url(result_path)
+
+    return {
+        "job_id":       job_id,
+        "download_url": url,
+        "expires_in":   "1 hora",
+        "metrics":      gmm_run.get("metrics"),
+        "centroids":    gmm_run.get("centroids"),
+    }
