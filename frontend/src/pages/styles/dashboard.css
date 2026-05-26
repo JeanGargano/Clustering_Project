@@ -1,0 +1,15 @@
+.dashboard-grid {
+  display: grid;
+  /* El mapa toma el 60% del ancho, el reporte el 40% */
+  grid-template-columns: 6fr 4fr; 
+  gap: 2rem;
+  padding: 2rem;
+  /* Altura de toda la pantalla menos el Navbar */
+  height: calc(100vh - 80px); 
+}
+
+/* Forzamos a que las tarjetas ocupen el 100% del alto de la grilla */
+.card {
+  height: 100%;
+  padding: 0 1rem;
+}
