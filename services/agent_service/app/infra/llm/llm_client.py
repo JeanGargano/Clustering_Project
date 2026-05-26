@@ -32,7 +32,7 @@ async def call_llm(prompt: str) -> str:
             },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.3,   # baja temperatura para análisis técnico consistente
+        temperature=0.3, 
         max_tokens=1500,
         timeout=TIMEOUT,
     )
