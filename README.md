@@ -218,7 +218,7 @@ Polling del estado del clustering.
 
 ---
 
-## 3. GET /api/jobs/{job_id}/analysis
+## 3. GET /api/jobs/{job_id}/results
 
 Retorna el análisis semántico generado por Llama 3.3 70B.
 Solo disponible cuando `status: done`.
@@ -235,6 +235,7 @@ Solo disponible cuando `status: done`.
     "job_id":   "3f7a1c22-84b1-4e2d-a9f0-123456789abc",
     "status":   "done",
     "analysis": "## Análisis de Clustering IoT\n\n**Cluster 0** representa tráfico normal..."
+    "download_url"
 }
 \```
 
