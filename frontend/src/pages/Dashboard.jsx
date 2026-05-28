@@ -1,73 +1,125 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Geo from '../sections/geo'; 
 import Report from '../sections/report';
 import Papa from 'papaparse';
 import './styles/dashboard.css';
-import { useState, useEffect } from 'react';
 
 const Dashboard = () => {
-    // En tu Dashboard.jsx, puedes probarlo así temporalmente:
-const [llmText, setLlmText] = useState(`
-# Reporte de Inteligencia de Amenazas: Clustering IoT
+  const [llmText, setLlmText] = useState('');
+  const [geoData, setGeoData] = useState([]);
+  const [isWaiting, setIsWaiting] = useState(true);
 
-> **Nota del Sistema:** Análisis generado automáticamente utilizando *Llama 3.3* basado en agrupaciones espaciales multivariadas y variables contextuales.
+  useEffect(() => {
+    // Función asíncrona para orquestar la obtención de datos
+    const fetchDashboardData = async () => {
+      try {
+        // 1. Recuperamos el JSON que guardó el componente de carga (Dragzone)
+        const savedData = localStorage.getItem('clustering_result');
+        if (!savedData) {
+          console.error("No se encontraron resultados previos en localStorage.");
+          setIsWaiting(false);
+          return;
+        }
 
-## Resumen Ejecutivo
-El modelo de *Machine Learning* ha identificado **3 clústeres principales** de actividad anómala en la infraestructura de red. La métrica de calidad de la agrupación (Coeficiente de Silhouette) alcanzó un valor óptimo que indica una alta cohesión interna y separación:
+        const parsedData = JSON.parse(savedData);
+        const currentJobId = parsedData.job_id;
 
-$$S(i) = \\frac{b(i) - a(i)}{\\max\\{a(i), b(i)\\}} \\approx 0.78$$
+        // Extraemos el texto del LLM buscando el run que tenga el análisis finalizado
+        if (parsedData.runs) {
+          const runWithAnalysis = Object.values(parsedData.runs).find(run => run.analysis_status === 'done');
+          
+          if (runWithAnalysis && runWithAnalysis.analysis) {
+             setLlmText(runWithAnalysis.analysis);
+          } else {
+             setLlmText("No se encontró reporte de IA.");
+          }
+        }
 
-Esta separación matemática confirma que los ataques no son aleatorios, sino que están altamente correlacionados con el tipo de infraestructura física.
+        // 2. Hacemos el GET al endpoint de resultados usando el currentJobId
+        const response = await fetch(`http://localhost:8001/api/jobs/${currentJobId}/results`);
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP consultando resultados: ${response.status}`);
+        }
+        
+        const resultsData = await response.json();
 
----
+        // 3. Validamos que el backend nos entregó la URL firmada de MinIO
+        if (resultsData.download_url) {
+          
+          // Redirigimos la petición interna hacia nuestro Reverse Proxy (Vite / Nginx)
+          let csvUrl = resultsData.download_url;
+          csvUrl = csvUrl.replace('http://minio:9000', '/minio-api');
 
-## Perfiles de Clúster Identificados
+          // 4. Descargamos y mapeamos el CSV final con PapaParse
+          Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            dynamicTyping: true, // Automáticamente convierte los textos "47.38" a números 47.38
+            skipEmptyLines: true,
+            complete: (results) => {
+              console.log("Dataset descargado a través del Proxy:", results.data);
+              
+              // =======================================================
+              // EXTRACCIÓN DE DATOS REALES PARA EL MAPA
+              // =======================================================
+              const realMappedData = results.data.map((point) => ({
+                ...point,
+                lat: point.Latitude,                       // Extrae la latitud real del CSV
+                lon: point.Longitude,                      // Extrae la longitud real del CSV
+                cluster: point.cluster,                    // Conserva el clúster calculado
+                infra_type: point['Infrastructure Type'],  // Mapea la infraestructura para el tooltip del mapa
+                attack_type: point['Cyber Attack Type']    // Opcional: Útil si quieres expandir tu mapa luego
+              }));
 
-### 🔵 Clúster 0: Botnet y DDoS en Zonas Residenciales
-- **Variables Dominantes:** Tráfico UDP masivo, alta densidad de dispositivos vulnerables (routers genéricos y cámaras IP).
-- **Modelo de Propagación:** La infección sigue un modelo de decaimiento exponencial donde la tasa de peticiones se define como $f(t) = \\lambda e^{-kt}$.
-- **Contexto Geoespacial:** Alta concentración en barrios periféricos con gran densidad poblacional. Se detectaron picos que superan los \`15,000 req/s\`.
+              setGeoData(realMappedData);
+              setIsWaiting(false); // Todo está listo, mostramos la interfaz
+            },
+            error: (err) => {
+              console.error("Fallo al descargar el archivo CSV:", err);
+              setIsWaiting(false);
+            }
+          });
+        } else {
+          console.error("El JSON recibido no contiene la propiedad 'download_url'.");
+          setIsWaiting(false);
+        }
 
-### 🟣 Clúster 1: Escaneo de Puertos en Infraestructura Hospitalaria
-- **Variables Dominantes:** Intentos repetidos de conexión a puertos de administración (\`22\`, \`23\`, \`3389\`).
-- **Comportamiento Matemático:** El ataque utiliza un barrido sigiloso. La varianza del tráfico se puede representar mediante la matriz de covarianza $\\Sigma$ para evadir sistemas IDS/IPS tradicionales.
-- **Riesgo:** **CRÍTICO**. Posible fase de reconocimiento (reconnaissance) previa a un ataque de Ransomware.
+      } catch (error) {
+        console.error("Excepción en el flujo de carga del Dashboard:", error);
+        setIsWaiting(false); // Apagamos el loader para no dejar al usuario atascado
+      }
+    };
 
-### 🟡 Clúster 2: Interferencia en Nodos de Transporte
-- **Variables Dominantes:** Pérdida de paquetes inusualmente alta y latencia extrema.
-- **Métrica de Distancia:** Los eventos se agrupan utilizando una distancia de Mahalanobis para aislar el ruido de la red:
-  
-$$D_M(\\vec{x}) = \\sqrt{(\\vec{x} - \\vec{\\mu})^T S^{-1} (\\vec{x} - \\vec{\\mu})}$$
-
-## Recomendaciones de Seguridad (Mitigación)
-
-Para contener las amenazas basadas en la distribución espacial actual, se sugieren las siguientes acciones automáticas:
-
-1. **Aislamiento Dinámico:** Aislar los segmentos de red (\`VLANs\`) correspondientes a las coordenadas del Clúster 1.
-2. **Rate-Limiting Geográfico:** Implementar reglas estrictas en el WAF para limitar peticiones originadas en los bloques IP asociados al Clúster 0.
-3. **Auditoría de Firmware:** Forzar el parcheo del estándar *IEEE 802.11* en los nodos de transporte afectados en el Clúster 2.
-`);
-
-
-  const [geoData, setGeoData] = useState([
-  { "lat": 4.6097, "lon": -74.0817, "cluster": 0, "infra_type": "Hospital" },
-  { "lat": 10.3910, "lon": -75.4794, "cluster": 1, "infra_type": "Transporte" },
-  { "lat": 3.4516, "lon": -76.5320, "cluster": 0, "infra_type": "Residencial" }
-]);
-
+    // Ejecutamos la orquestación una sola vez al cargar la vista
+    fetchDashboardData();
+  }, []);
 
   return (
     <div style={{ padding: '2rem', color: 'var(--text-main)' }}>
-        <h1 className='title1'>Dashboard Analítico</h1>
-    <div className="dashboard-grid">
-            
-            <Geo data={geoData} /> 
-            <div className="card llm-card">
-            <Report markdownContent={llmText} />
+      <h1 className='title1'>Dashboard Analítico</h1>
+      
+      {isWaiting ? (
+        <div style={{ textAlign: 'center', marginTop: '10vh' }}>
+          <h2 className="title2" style={{ color: 'var(--accent-color)' }}>
+            Obteniendo coordenadas y métricas...
+          </h2>
+          <p className="text3">
+            Conectando con el Gateway para descargar el dataset resultante.
+          </p>
         </div>
-    </div>
-
-        
+      ) : (
+        <div className="dashboard-grid">
+          <div className="card map-card">
+            {/* El mapa ahora grafica las posiciones geoespaciales precisas */}
+            <Geo data={geoData} /> 
+          </div>
+          <div className="card llm-card">
+            {/* El reporte de IA se formatea con Markdown y LaTeX */}
+            <Report markdownContent={llmText} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

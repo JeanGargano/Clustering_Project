@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './styles/dragzone.css';
 
-// Añadimos onAnalysisComplete como prop para pasar el resultado final al componente padre (ej. App o Dashboard)
 const FileUpload = ({ onAnalysisComplete }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -24,7 +23,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
       setStatusText('Recuperando análisis en curso...');
       pollJobStatus(savedJobId);
     }
-  }, []); // Se ejecuta solo una vez al montar el componente
+  }, []);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -50,7 +49,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
   const validateAndSetFile = (file) => {
     if (file.name.endsWith('.csv') || file.type === 'text/csv') {
       setSelectedFile(file);
-      setErrorMsg(null); // Limpiar errores previos si seleccionan un buen archivo
+      setErrorMsg(null); 
     } else {
       alert('Por favor, sube un archivo con extensión .csv');
     }
@@ -68,7 +67,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:8001/api/ingest', {
+      const response = await fetch('http://localhost:8001/api/clustering', {
         method: 'POST',
         body: formData,
       });
@@ -78,7 +77,6 @@ const FileUpload = ({ onAnalysisComplete }) => {
       const data = await response.json();
       console.log('Ingesta exitosa. Job ID:', data.job_id);
       
-      // Guardar el ID en el estado y en la sesión
       setJobId(data.job_id);
       sessionStorage.setItem('active_clustering_job', data.job_id);
       
@@ -94,7 +92,8 @@ const FileUpload = ({ onAnalysisComplete }) => {
     }
   };
 
-  // 2. FASE DE MONITOREO
+  // 2. FASE DE MONITOREO UNIFICADA
+// 2. FASE DE MONITOREO UNIFICADA
   const pollJobStatus = async (currentJobId) => {
     try {
       const response = await fetch(`http://localhost:8001/api/jobs/${currentJobId}/status`);
@@ -102,79 +101,56 @@ const FileUpload = ({ onAnalysisComplete }) => {
       
       const data = await response.json();
 
-      if (data.status === 'failed') {
-        throw new Error('Error interno: El proceso de clustering falló en el servidor.');
+      // 1. Buscamos si ALGÚN algoritmo falló
+      const hasFailedRun = data.runs && Object.values(data.runs).some(run => run.status === 'failed');
+      if (hasFailedRun) {
+        throw new Error('Error interno: Un algoritmo de clustering falló en el servidor.');
       }
 
-      if (data.status === 'done') {
-        setStatusText('Clustering multivariado finalizado. Consultando a la IA...');
-        // Iniciar fase 3
-        fetchAnalysis(currentJobId);
-      } else {
-        // Continúa en 'queued' o 'running'
-        if (data.status === 'running') {
-            setStatusText('Ejecutando algoritmo de clustering espacial...');
+      // 2. Buscamos dinámicamente cuál algoritmo tiene el análisis LLM terminado
+      const completedAnalysisRun = data.runs 
+        ? Object.values(data.runs).find(run => run.analysis_status === 'done') 
+        : null;
+
+      // 3. Verificamos si encontramos el análisis
+      if (completedAnalysisRun) {
+        setStatusText('¡Análisis completado exitosamente!');
+        setIsProcessing(false);
+        
+        // Guardamos todo el JSON en localStorage
+        localStorage.setItem('clustering_result', JSON.stringify(data));
+        console.log("Debug [Exito]: Reporte guardado en memoria.");
+        
+        sessionStorage.removeItem('active_clustering_job');
+        setJobId(null);
+        
+        if (onAnalysisComplete) {
+           onAnalysisComplete(data);
         }
-        // Esperar 3 segundos antes del próximo ciclo para no saturar el servidor
-        setTimeout(() => pollJobStatus(currentJobId), 3000);
+      } else {
+        // --- FEEDBACK VISUAL DETALLADO MIENTRAS ESPERA ---
+        // Verificamos si al menos un algoritmo de clustering ya terminó de agrupar
+        const isClusteringDone = data.runs && Object.values(data.runs).some(run => run.status === 'done');
+
+        if (!data.runs && data.status_cleaning !== 'done') {
+            setStatusText('Limpiando y preparando el dataset...');
+        } else if (!isClusteringDone) {
+            setStatusText('Ejecutando algoritmo de clustering multivariado...');
+        } else {
+            setStatusText('Generando reporte semántico con IA (esto tomará unos segundos)...');
+        }
+
+        // Consultar de nuevo en 1 segundo
+        setTimeout(() => pollJobStatus(currentJobId), 1000);
       }
     } catch (err) {
       console.error("Debug [Polling]:", err);
       setErrorMsg(err.message);
       setIsProcessing(false);
-      
-      // Limpiar sesión en caso de error para no quedar atrapados en un loop al recargar
       sessionStorage.removeItem('active_clustering_job');
       setJobId(null);
     }
   };
-
-  // 3. FASE DE EXTRACCIÓN LLM
-  const fetchAnalysis = async (currentJobId) => {
-    try {
-      const response = await fetch(`http://localhost:8001/api/jobs/${currentJobId}/analysis`);
-      
-      if (response.status === 202) {
-         console.log("Debug [Análisis]: LLM trabajando, reintentando en 3s...");
-         setStatusText('Analizando patrones y redactando el reporte semántico (esto tomará unos segundos)...');
-         setTimeout(() => fetchAnalysis(currentJobId), 3000);
-         return;
-      }
-      
-      if (!response.ok) throw new Error('Error al descargar los resultados del modelo.');
-
-      const data = await response.json();
-      
-      // ==========================================
-      // NUEVO: GUARDADO EN ALMACENAMIENTO PERSISTENTE
-      // ==========================================
-      localStorage.setItem('clustering_result', JSON.stringify(data));
-      
-      setStatusText('¡Análisis completado exitosamente!');
-      setIsProcessing(false);
-      
-      console.log("Debug [Exito]: Reporte final obtenido y guardado en localStorage.");
-      
-      // Limpieza tras éxito
-      sessionStorage.removeItem('active_clustering_job');
-      setJobId(null);
-      
-      // Ejecutar la función callback si fue proveída para cambiar de vista o mostrar datos
-      if (onAnalysisComplete) {
-         onAnalysisComplete(data);
-      }
-
-    } catch (err) {
-      console.error("Debug [Extracción]:", err);
-      setErrorMsg(err.message);
-      setIsProcessing(false);
-      
-      // Limpiar sesión en caso de error
-      sessionStorage.removeItem('active_clustering_job');
-      setJobId(null);
-    }
-  };
-
   return (
     <section className="upload-section">
       <div 
@@ -182,7 +158,6 @@ const FileUpload = ({ onAnalysisComplete }) => {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        // Deshabilitar clic si está procesando
         onClick={() => !isProcessing && fileInputRef.current.click()}
       >
         <input 
@@ -212,12 +187,10 @@ const FileUpload = ({ onAnalysisComplete }) => {
         )}
       </div>
 
-      {/* Mensajes de feedback visual de la consola a la interfaz */}
       <div className="feedback-container">
         {isProcessing && (
           <div className="status-wrapper">
             <p className="text2">{statusText}</p>
-            {/* Mostramos el ID del proceso de forma sutil */}
             {jobId && <p className="text3" style={{ marginTop: '0.25rem', opacity: 0.7 }}>ID de proceso: {jobId.substring(0, 8)}</p>}
           </div>
         )}
