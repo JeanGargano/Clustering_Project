@@ -30,22 +30,11 @@ Cada etapa del proceso está desacoplada en microservicios independientes que se
 ### Gateway `puerto 8001`
 Punto de entrada único del sistema. Recibe todas las peticiones del frontend, las valida y las redirige al servicio correspondiente. Lee el estado de los jobs directamente desde Redis.
 
-### Data Service `puerto 8002`
-Recibe el dataset CSV del gateway y ejecuta el pipeline de preprocesamiento:
-- Eliminación de duplicados
-- Imputación de valores faltantes (mediana para numéricas, moda para categóricas)
-- Análisis numérico y de correlación
-- Eliminación de datos ruidosos
-- One-Hot Encoding de variables categóricas
-- Reducción dimensional con PCA (retiene 95% de varianza)
-
-Al finalizar sube el CSV limpio a MinIO y actualiza Redis.
-Publica evento en kafka, dataset.ready
 
 ### Clustering Service `puerto 8003`
-Consume el tópico `dataset.ready` de Kafka. Descarga el dataset limpio desde MinIO, ejecuta el modelo de clustering seleccionado, calcula métricas de evaluación y guarda los resultados en MinIO. Actualiza Redis con el estado y las métricas.
+Recibe la data crida via gateway, etiqeta el procesose coomo 'queued', se conecta a un pipleine.pkl que realiza el preprocesamiento de data y el clustering juntp con calculo de metricas, cambia el estado global a done, guarda los resultados en minio en un archivo csv, publica en clustering.done
 
-EL modelos está empaquetado dentro del contenedor Docker como archivos `.pkl` entrenado en Colab.
+El pipeline está empaquetado dentro del contenedor Docker como archivos `.pkl` entrenado en Colab.
 
 ### Agent Service `puerto 8004`
 Consume el tópico `clustering.done` de Kafka. Descarga los resultados del clustering desde MinIO, construye un prompt con las estadísticas por cluster y llama a Llama 3.3 70B via Groq para generar un análisis semántico de los patrones encontrados. Guarda el análisis en Redis.
