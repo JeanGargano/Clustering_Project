@@ -14,10 +14,21 @@ BUCKET_CLEAN   = os.getenv("MINIO_BUCKET_CLEAN", "clean")
 BUCKET_RESULTS = os.getenv("MINIO_BUCKET_RESULTS", "results")
 
 
-async def download_dataframe(minio_path: str) -> pd.DataFrame:
-    bucket, obj_path = minio_path.split("/", 1)
-    response = _client.get_object(bucket, obj_path)
-    return pd.read_csv(io.BytesIO(response.read()))
+async def upload_dataframe(df: pd.DataFrame, job_id: str) -> str:
+    if not _client.bucket_exists(BUCKET_CLEAN):
+        _client.make_bucket(BUCKET_CLEAN)
+
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    path = f"{job_id}/clean.csv"
+
+    _client.put_object(
+        bucket_name=BUCKET_CLEAN,
+        object_name=path,
+        data=io.BytesIO(csv_bytes),
+        length=len(csv_bytes),
+        content_type="text/csv",
+    )
+    return f"{BUCKET_CLEAN}/{path}"
 
 
 async def upload_results(df: pd.DataFrame, job_id: str) -> str:

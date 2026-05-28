@@ -15,15 +15,12 @@ class RunClusteringResponse(BaseModel):
 
 
 class JobStatusResponse(BaseModel):
-    job_id:           str
-    status_cleaning:  str            
-    minio_path:       Optional[str] = None
-    runs: Optional[dict[str, Any]] = None
-    # runs = {
-    #   "kmeans":      { status, metrics, centroids, result_path, analysis }
-    #   "gmm":         { status, metrics, ... }
-    #   "kmeans_plus": { status, metrics, ... }
-    # }
+    job_id:          str
+    status:          str
+    filename:        Optional[str] = None
+    minio_path:      Optional[str] = None
+    error:           Optional[str] = None
+    runs:            Optional[dict[str, Any]] = None
 
 
 class AnalysisResponse(BaseModel):

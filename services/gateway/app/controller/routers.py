@@ -2,26 +2,23 @@ import json
 import logging
 import os
 import httpx
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 from app.infra.minio.minio_client import generate_presigned_url
 
 from app.model.schemas import (
     DocumentUploadResponse,
     JobStatusResponse,
-    AnalysisResponse,
-    RunClusteringResponse,
 )
 from app.infra.redis.redis_client import get_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-DATA_SERVICE_URL       = os.getenv("DATA_SERVICE_URL", "http://data_service:8002")
-
+CLUSTERING_SERVICE_URL = os.getenv("CLUSTERING_SERVICE_URL", "http://clustering_service:8003")
 
 
 # ── 1. Ingesta ────────────────────────────────────────────────────────────────
-@router.post("/api/ingest", response_model=DocumentUploadResponse)
+@router.post("/api/clustering", response_model=DocumentUploadResponse)
 async def ingest_dataset(file: UploadFile = File(...)) -> DocumentUploadResponse:
 
     if not file.filename.endswith(".csv"):
@@ -30,7 +27,7 @@ async def ingest_dataset(file: UploadFile = File(...)) -> DocumentUploadResponse
     try:
         async with httpx.AsyncClient(timeout=60) as client:
             response = await client.post(
-                f"{DATA_SERVICE_URL}/ingest",
+                f"{CLUSTERING_SERVICE_URL}/ingest",
                 files={"file": (file.filename, await file.read(), "text/csv")},
             )
             response.raise_for_status()
@@ -40,8 +37,8 @@ async def ingest_dataset(file: UploadFile = File(...)) -> DocumentUploadResponse
         return DocumentUploadResponse(**data)
 
     except httpx.HTTPStatusError as e:
-        logger.error(f"HTTPStatusError: {e.response.status_code}")
-        logger.error(f"Response: {e.response.text}")
+        logger.error(f"HTTPStatusError: {e.response.status_code} — {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=e.response.text)
     except httpx.RequestError as e:
         logger.error(f"RequestError: {repr(e)}")
         raise HTTPException(status_code=503, detail=str(e))
@@ -61,7 +58,6 @@ async def get_job_status(job_id: str) -> JobStatusResponse:
     return JobStatusResponse(**data)
 
 
-
 # ── 3. Resultados del clustering ──────────────────────────────────────────────
 @router.get("/api/jobs/{job_id}/results")
 async def get_results(job_id: str):
@@ -71,16 +67,16 @@ async def get_results(job_id: str):
     if not raw:
         raise HTTPException(status_code=404, detail="Job no encontrado.")
 
-    state   = json.loads(raw)
-    gmm_run = state.get("runs", {}).get("gmm")
+    state      = json.loads(raw)
+    kmeans_run = state.get("runs", {}).get("kmeans")
 
-    if not gmm_run:
-        raise HTTPException(status_code=404, detail="Run GMM no encontrado.")
+    if not kmeans_run:
+        raise HTTPException(status_code=404, detail="Run de clustering no encontrado.")
 
-    if gmm_run.get("status") != "done":
+    if kmeans_run.get("status") != "done":
         raise HTTPException(status_code=400, detail="El clustering aún no ha terminado.")
 
-    result_path = gmm_run.get("result_path")
+    result_path = kmeans_run.get("result_path")
     if not result_path:
         raise HTTPException(status_code=404, detail="Ruta de resultados no encontrada.")
 
@@ -90,6 +86,6 @@ async def get_results(job_id: str):
         "job_id":       job_id,
         "download_url": url,
         "expires_in":   "1 hora",
-        "metrics":      gmm_run.get("metrics"),
-        "centroids":    gmm_run.get("centroids"),
+        "metrics":      kmeans_run.get("metrics"),
+        "centroids":    kmeans_run.get("centroids"),
     }

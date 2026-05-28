@@ -85,20 +85,17 @@ Disponible en `http://localhost:8080`
 
 ```
 1. Usuario sube un CSV
-       POST /api/ingest
+       POST /api/clustering
            │
-           └── Gateway → Data Service (/ingest)
+           └── Gateway → clustering_service (/ingest)
                ├── Ejecuta pipeline de limpieza
                ├── Sube CSV limpio → MinIO (clean/{job_id}/clean.csv)
                ├── Crea job en Redis → { status_cleaning: "done", status: "queued" }
-               └── Publica en Kafka (dataset.ready) → { job_id, minio_path }
 
 2. Clustering Service consume dataset.ready automáticamente
-           │
-           └── Kafka (dataset.ready) → Clustering Service
+           │---
                ├── Actualiza Redis → { status: "running" }
-               ├── Descarga CSV limpio desde MinIO
-               ├── Ejecuta modelo .pkl empaquetado en el contenedor
+               ├── Ejecuta pipeline .pkl empaquetado en el contenedor
                ├── Sube results.csv → MinIO (results/{job_id}/results.csv)
                ├── Actualiza Redis → { status: "done", metrics: {...}, centroids: [...] }
                └── Publica en Kafka (clustering.done) → { job_id, result_path, metrics }
@@ -166,7 +163,7 @@ docker compose down
 
 ### Endpoints
 
-## 1. POST /api/ingest
+## 1. POST /api/clustering
 
 Recibe un CSV, lo limpia y dispara el clustering. Retorna un `job_id`.
 
@@ -202,7 +199,7 @@ Polling del estado del clustering.
 {
     "job_id":          "3f7a1c22-84b1-4e2d-a9f0-123456789abc",
     "status_cleaning": "",
-    "status":          "running"
+    "status":          "done"
 }
 \```
 

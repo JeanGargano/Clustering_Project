@@ -1,11 +1,13 @@
-import asyncio
 import logging
 from fastapi import FastAPI
-from app.infra.kafka.consumer import start_consumer
+from app.controller.routers import router
 
 logging.basicConfig(level=logging.INFO)
-app = FastAPI(title="Clustering Service")
 
-@app.on_event("startup")
-async def startup():
-    asyncio.create_task(start_consumer())
+app = FastAPI(
+    title="Clusttering service",
+    description="Servicio de clustering para análisis de ciberataques IoT",
+    version="2.0.0",
+)
+
+app.include_router(router)

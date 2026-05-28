@@ -63,19 +63,7 @@ services:
     env_file:
       - .env
     restart: on-failure   
-
-  data_service:
-    build: ./services/data_service
-    container_name: data_service
-    ports:
-      - "8002:8002"     
-    depends_on:
-      - kafka
-      - minio
-      - redis            
-    env_file:
-      - .env
-    restart: on-failure    
+  
 
   clustering_service:
     build: ./services/clustering_service
@@ -101,19 +89,6 @@ services:
     env_file:
       - .env
     restart: on-failure   
-
-
-
-  frontend:
-    build: ./frontend
-    container_name: frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - gateway
-    env_file:
-      - .env
-    restart: on-failure
 
 volumes:
   minio_data:          
