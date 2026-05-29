@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // Interceptamos la ruta
       '/minio-api': {
-        target: 'http://localhost:9000', // Apunta al MinIO expuesto en tu PC
+        target: 'http://gateway:8001', // Apunta al MinIO expuesto en tu PC
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/minio-api/, ''), // Limpiamos la ruta
         headers: {

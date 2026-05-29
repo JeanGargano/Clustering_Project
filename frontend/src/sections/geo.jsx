@@ -78,7 +78,12 @@ const Geo = ({ data }) => {
                   <span>Lat: {point.lat.toFixed(4)}</span>
                   <br />
                   <span>Lon: {point.lon.toFixed(4)}</span>
-                  {/* Aquí puedes agregar más variables de tu dataset (ej. point.infra_type) */}
+                  {point.attack_type && (
+                    <>
+                      <br />
+                      <span>Ataque: {point.attack_type}</span>
+                    </>
+                  )}
                   {point.infra_type && (
                     <>
                       <br />

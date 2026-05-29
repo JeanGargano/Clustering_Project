@@ -36,7 +36,7 @@ const Dashboard = () => {
         }
 
         // 2. Hacemos el GET al endpoint de resultados usando el currentJobId
-        const response = await fetch(`http://localhost:8001/api/jobs/${currentJobId}/results`);
+        const response = await fetch(`/api/jobs/${currentJobId}/results`);
         
         if (!response.ok) {
           throw new Error(`Error HTTP consultando resultados: ${response.status}`);

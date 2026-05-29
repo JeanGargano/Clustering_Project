@@ -67,7 +67,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:8001/api/clustering', {
+      const response = await fetch('/api/clustering', {
         method: 'POST',
         body: formData,
       });
@@ -96,7 +96,7 @@ const FileUpload = ({ onAnalysisComplete }) => {
 // 2. FASE DE MONITOREO UNIFICADA
   const pollJobStatus = async (currentJobId) => {
     try {
-      const response = await fetch(`http://localhost:8001/api/jobs/${currentJobId}/status`);
+      const response = await fetch(`/api/jobs/${currentJobId}/status`);
       if (!response.ok) throw new Error('Fallo al consultar el estado del trabajo.');
       
       const data = await response.json();
