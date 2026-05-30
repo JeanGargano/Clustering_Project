@@ -96,8 +96,8 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div style={{ padding: '2rem', color: 'var(--text-main)' }}>
-      <h1 className='title1'>Dashboard Analítico</h1>
+    <div className="dashboard-container">
+      <h1 className='title1 centeredtitle'>Dashboard Analítico</h1>
       
       {isWaiting ? (
         <div style={{ textAlign: 'center', marginTop: '10vh' }}>

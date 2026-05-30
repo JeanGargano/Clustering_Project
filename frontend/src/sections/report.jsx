@@ -41,8 +41,8 @@ const Report = ({ markdownContent }) => {
               h2: ({node, ...props}) => <h2 className="text2" {...props} />,
               h3: ({node, ...props}) => <h3 className="text2" {...props} />,
               a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" className="text2" {...props} />, 
-              p: ({node, ...props}) => <p className="text3" {...props} />,
-              li: ({node, ...props}) => <li className="text3" {...props} />
+              p: ({node, ...props}) => <p className="text3t" {...props} />,
+              li: ({node, ...props}) => <li className="text3t" {...props} />
             }}
           >
             {markdownContent}
